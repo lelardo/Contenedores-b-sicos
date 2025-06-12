@@ -1,0 +1,148 @@
+---
+// Frontmatter de Astro (aquí puedes importar CSS y JS)
+import './index.css';
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Dino feisbuc</title>
+		
+	</head>
+	<body>
+		<div class="container">
+			<h1>Dino feisbuc</h1>
+			
+			<div id="user-info"></div>
+			
+			<div id="nav-buttons" class="nav-buttons">
+				<!-- Navigation buttons will be loaded dynamically -->
+			</div>
+			
+			<div class="publicaciones">
+				<h2>Publicaciones Recientes</h2>
+				<div id="publicaciones-container">
+					<div class="loading">Cargando publicaciones...</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			const API_BASE = 'http://localhost:8000';
+			let currentUser = null;
+
+			async function checkAuthStatus() {
+				try {
+					const response = await fetch(`${API_BASE}/api/perfil/`, {
+						credentials: 'include'
+					});
+
+					if (response.ok) {
+						const data = await response.json();
+						currentUser = data.user;
+						showAuthenticatedNav();
+					} else {
+						currentUser = null;
+						showUnauthenticatedNav();
+					}
+				} catch (error) {
+					console.log('User not authenticated');
+					currentUser = null;
+					showUnauthenticatedNav();
+				}
+			}
+
+			function showAuthenticatedNav() {
+				const userInfo = document.getElementById('user-info');
+				const navButtons = document.getElementById('nav-buttons');
+
+				userInfo.innerHTML = `
+					<div class="user-welcome">
+						¡Bienvenido, ${currentUser.first_name} ${currentUser.last_name}!
+					</div>
+				`;
+
+				navButtons.innerHTML = `
+					<a href="/perfil" class="btn">Mi Perfil</a>
+					<button onclick="handleLogout()" class="btn logout">Cerrar Sesión</button>
+				`;
+			}
+
+			function showUnauthenticatedNav() {
+				const userInfo = document.getElementById('user-info');
+				const navButtons = document.getElementById('nav-buttons');
+
+				userInfo.innerHTML = '';
+
+				navButtons.innerHTML = `
+					<a href="/login" class="btn">Iniciar Sesión</a>
+					<a href="/registro" class="btn">Registrarse</a>
+				`;
+			}
+
+			// Make logout function globally accessible
+			window.handleLogout = async function() {
+				try {
+					const response = await fetch(`${API_BASE}/api/logout/`, {
+						method: 'POST',
+						credentials: 'include'
+					});
+
+					// Always redirect to login regardless of server response
+					window.location.href = '/login';
+				} catch (error) {
+					console.error('Logout error:', error);
+					// Still redirect to login in case of network error
+					window.location.href = '/login';
+				}
+			}
+
+			async function loadPublicaciones() {
+				try {
+					const response = await fetch(`${API_BASE}/api/publicaciones/`);
+					const data = await response.json();
+					
+					const container = document.getElementById('publicaciones-container');
+					
+					if (data.publicaciones && data.publicaciones.length > 0) {
+						container.innerHTML = data.publicaciones.map(pub => `
+							<div class="publicacion">
+								<div class="publicacion-header">
+									<div class="usuario-info">
+										${pub.usuario.has_profile_picture 
+											? `<img src="${API_BASE}/profile-picture/${pub.usuario.id}/" alt="Foto de perfil" class="avatar">`
+											: `<img src="/default-profile.png" alt="Foto de perfil predeterminada" class="avatar">`
+										}
+										<span class="username">${pub.usuario.username}</span>
+									</div>
+									<span class="fecha">${new Date(pub.fecha_creacion).toLocaleString()}</span>
+								</div>
+								<h3>${pub.titulo}</h3>
+								<div class="contenido">${pub.contenido}</div>
+								${pub.has_imagen 
+									? `<div class="imagen"><img src="${API_BASE}/publicacion-imagen/${pub.id}/" alt="Imagen de la publicación"></div>`
+									: ''
+								}
+							</div>
+						`).join('');
+					} else {
+						container.innerHTML = '<p>No hay publicaciones disponibles.</p>';
+					}
+				} catch (error) {
+					console.error('Error loading publications:', error);
+					document.getElementById('publicaciones-container').innerHTML = 
+						'<div class="error">Error al cargar las publicaciones</div>';
+				}
+			}
+
+			// Initialize page when loaded
+			document.addEventListener('DOMContentLoaded', async () => {
+				await checkAuthStatus();
+				await loadPublicaciones();
+			});
+		</script>
+	</body>
+</html>

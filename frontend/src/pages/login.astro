@@ -1,0 +1,99 @@
+---
+// Frontmatter de Astro (aquí puedes importar CSS y JS)
+import './login.css';
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Iniciar Sesión</title>
+			</head>
+	<body>
+		<div class="container">
+			<h1>Iniciar Sesión</h1>
+			
+			<div id="messages" class="messages"></div>
+			
+			<form id="loginForm">
+				<div class="form-group">
+					<label for="username">Nombre de usuario:</label>
+					<input type="text" id="username" name="username" required>
+					<div id="username-error" class="error-text"></div>
+				</div>
+				
+				<div class="form-group">
+					<label for="password">Contraseña:</label>
+					<input type="password" id="password" name="password" required>
+					<div id="password-error" class="error-text"></div>
+				</div>
+				
+				<button type="submit" id="submitBtn">Iniciar Sesión</button>
+				
+				<div class="links">
+					<a href="/registro">¿No tienes cuenta? Regístrate aquí</a>
+					<a href="/">Volver al inicio</a>
+				</div>
+			</form>
+		</div>
+
+		<script>
+			const API_BASE = 'http://localhost:8000';
+
+			function showMessage(message, type = 'error') {
+				const messagesDiv = document.getElementById('messages');
+				messagesDiv.innerHTML = `<div class="message ${type}">${message}</div>`;
+			}
+
+			function clearErrors() {
+				document.querySelectorAll('.error-text').forEach(el => el.textContent = '');
+			}
+
+			document.getElementById('loginForm').addEventListener('submit', async (e) => {
+				e.preventDefault();
+				
+				const submitBtn = document.getElementById('submitBtn');
+				const formData = new FormData(e.target);
+				
+				const data = {
+					username: formData.get('username'),
+					password: formData.get('password')
+				};
+
+				clearErrors();
+				showMessage('');
+				submitBtn.disabled = true;
+				submitBtn.textContent = 'Iniciando sesión...';
+
+				try {
+					const response = await fetch(`${API_BASE}/api/login/`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						credentials: 'include',
+						body: JSON.stringify(data)
+					});
+
+					const result = await response.json();
+
+					if (result.success) {
+						showMessage('¡Login exitoso! Redirigiendo...', 'success');
+						setTimeout(() => {
+							window.location.href = '/perfil';
+						}, 1000);
+					} else {
+						showMessage(result.message || 'Error al iniciar sesión');
+					}
+				} catch (error) {
+					console.error('Login error:', error);
+					showMessage('Error de conexión. Intenta nuevamente.');
+				} finally {
+					submitBtn.disabled = false;
+					submitBtn.textContent = 'Iniciar Sesión';
+				}
+			});
+		</script>
+	</body>
+</html>

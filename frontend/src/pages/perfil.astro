@@ -1,0 +1,180 @@
+---
+// Frontmatter de Astro (aquí puedes importar CSS y JS)
+import './perfil.css';
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Mi Perfil</title>
+		
+	</head>
+	<body>
+		<div class="container">
+			<h1>Mi Perfil</h1>
+
+			<div id="profile-content" class="loading">
+				Cargando perfil...
+			</div>
+		</div>
+
+		<script>
+			const API_BASE = 'http://localhost:8000';
+
+			function showMessage(message, type = 'error') {
+				const messagesDiv = document.getElementById('messages');
+				if (messagesDiv) {
+					messagesDiv.innerHTML = `<div class="message ${type}">${message}</div>`;
+				}
+			}
+
+			async function loadProfile() {
+				try {
+					const response = await fetch(`${API_BASE}/api/perfil/`, {
+						credentials: 'include'
+					});
+
+					if (response.status === 401 || response.status === 403) {
+						window.location.href = '/login';
+						return;
+					}
+
+					const data = await response.json();
+					
+					const container = document.getElementById('profile-content');
+					container.innerHTML = `
+						<div class="profile-info">
+							<div class="profile-image">
+								${data.user.has_profile_picture 
+									? `<img src="${API_BASE}/profile-picture/${data.user.id}/" alt="Foto de perfil">`
+									: `<img src="/default-profile.png" alt="Foto de perfil predeterminada">`
+								}
+							</div>
+
+							<div class="user-details">
+								<h2>${data.user.username}</h2>
+								<p><strong>Nombre:</strong> ${data.user.first_name} ${data.user.last_name}</p>
+								<p><strong>Email:</strong> ${data.user.email}</p>
+								<p><strong>Fecha de nacimiento:</strong> 
+									${data.user.fecha_nacimiento 
+										? new Date(data.user.fecha_nacimiento).toLocaleDateString()
+										: 'No especificada'
+									}
+								</p>
+							</div>
+						</div>
+
+						<div class="button-container">
+							<a href="/" class="btn">Inicio</a>
+							<button onclick="handleLogout()" class="btn logout">Cerrar Sesión</button>
+						</div>
+
+						<div class="publicacion-form">
+							<h3>Crear Nueva Publicación</h3>
+							<div id="messages"></div>
+							<form id="publicacionForm" enctype="multipart/form-data">
+								<div class="form-group">
+									<label for="titulo">Título:</label>
+									<input type="text" id="titulo" name="titulo" required>
+								</div>
+								<div class="form-group">
+									<label for="contenido">Contenido:</label>
+									<textarea id="contenido" name="contenido" required></textarea>
+								</div>
+								<div class="form-group">
+									<label for="imagen">Imagen (opcional):</label>
+									<input type="file" id="imagen" name="imagen" accept="image/*">
+								</div>
+								<button type="submit" class="btn">Publicar</button>
+							</form>
+						</div>
+
+						<div class="mis-publicaciones">
+							<h3>Mis Publicaciones</h3>
+							<div id="publicaciones-container">
+								${data.publicaciones && data.publicaciones.length > 0 
+									? data.publicaciones.map(pub => `
+										<div class="publicacion">
+											<h4>${pub.titulo}</h4>
+											<p class="fecha">${new Date(pub.fecha_creacion).toLocaleString()}</p>
+											<div class="contenido">${pub.contenido}</div>
+											${pub.has_imagen 
+												? `<div class="imagen"><img src="${API_BASE}/publicacion-imagen/${pub.id}/" alt="Imagen de la publicación"></div>`
+												: ''
+											}
+										</div>
+									`).join('')
+									: '<p>Aún no has creado ninguna publicación.</p>'
+								}
+							</div>
+						</div>
+					`;
+
+					// Set up form handler
+					document.getElementById('publicacionForm').addEventListener('submit', handlePublicacionSubmit);
+					
+				} catch (error) {
+					console.error('Error loading profile:', error);
+					document.getElementById('profile-content').innerHTML = 
+						'<div class="message error">Error al cargar el perfil</div>';
+				}
+			}
+
+			async function handlePublicacionSubmit(e) {
+				e.preventDefault();
+				
+				const formData = new FormData(e.target);
+				const submitBtn = e.target.querySelector('button[type="submit"]');
+				
+				submitBtn.disabled = true;
+				submitBtn.textContent = 'Publicando...';
+
+				try {
+					const response = await fetch(`${API_BASE}/api/perfil/`, {
+						method: 'POST',
+						body: formData,
+						credentials: 'include'
+					});
+
+					const result = await response.json();
+
+					if (result.success) {
+						showMessage('¡Publicación creada con éxito!', 'success');
+						e.target.reset();
+						// Reload profile to show new publication
+						setTimeout(loadProfile, 1000);
+					} else {
+						showMessage(result.message || 'Error al crear la publicación');
+					}
+				} catch (error) {
+					console.error('Error creating publication:', error);
+					showMessage('Error de conexión. Intenta nuevamente.');
+				} finally {
+					submitBtn.disabled = false;
+					submitBtn.textContent = 'Publicar';
+				}
+			}
+
+			// Make logout function globally accessible
+			window.handleLogout = async function() {
+				try {
+					const response = await fetch(`${API_BASE}/api/logout/`, {
+						method: 'POST',
+						credentials: 'include'
+					});
+					// Always redirect to login regardless of server response
+					window.location.href = '/login';
+				} catch (error) {
+					console.error('Logout error:', error);
+					// Still redirect to login in case of network error
+					window.location.href = '/login';
+				}
+			}
+
+			// Load profile when page loads
+			document.addEventListener('DOMContentLoaded', loadProfile);
+		</script>
+	</body>
+</html>
