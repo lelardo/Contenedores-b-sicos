@@ -39,6 +39,27 @@ services:
         condition: service_healthy
     restart: on-failure
 
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+        echo 'Esperando a que la base de datos esté lista...' &&
+        sleep 12 &&
+        npm start
+      "
+    volumes:
+      - ./user-service:/app
+      - /app/node_modules
+    ports:
+      - "3003:3003"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
   posts-service:
     build:
       context: ./posts-service
@@ -80,6 +101,31 @@ services:
         condition: service_healthy
     restart: on-failure
 
+  messages-service:
+    build:
+      context: ./messages-service
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+        echo 'Esperando a que la base de datos esté lista...' &&
+        sleep 18 &&
+        npm start
+      "
+    volumes:
+      - ./messages-service:/app
+      - /app/node_modules
+    ports:
+      - "3004:3004"
+    env_file: .env
+    environment:
+      - USER_SERVICE_URL=http://user-service:3003
+    depends_on:
+      db:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    restart: on-failure
+
   frontend:
     build:
       context: ./frontend
@@ -96,8 +142,10 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+      - user-service
       - posts-service
       - comments-service
+      - messages-service
     restart: on-failure
 
 volumes:

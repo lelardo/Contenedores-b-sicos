@@ -1,0 +1,344 @@
+---
+// Frontmatter de Astro (aquí puedes importar CSS y JS)
+import './mensajes.css';
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Mensajes</title>
+	</head>
+	<body>
+		<div class="container">
+			<div class="header">
+				<h1>Mensajes</h1>
+				<div class="header-buttons">
+					<a href="/" class="btn">Inicio</a>
+					<a href="/perfil" class="btn">Mi Perfil</a>
+				</div>
+			</div>
+
+			<div class="messages-container">
+				<div class="conversations-panel">
+					<div class="panel-header">
+						<h3>Conversaciones</h3>
+						<button id="newMessageBtn" class="btn-new">Nuevo</button>
+					</div>
+					<div id="conversations-list" class="conversations-list">
+						<div class="loading">Cargando conversaciones...</div>
+					</div>
+				</div>
+
+				<div class="chat-panel">
+					<div id="chat-header" class="chat-header">
+						<span>Selecciona una conversación</span>
+					</div>
+					<div id="messages-area" class="messages-area">
+						<div class="no-chat">Selecciona una conversación para comenzar a chatear</div>
+					</div>
+					<div id="message-input-area" class="message-input-area" style="display: none;">
+						<div class="input-group">
+							<textarea id="messageText" placeholder="Escribe tu mensaje..." rows="2"></textarea>
+							<button id="sendBtn" class="btn-send">Enviar</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Modal for new message -->
+			<div id="newMessageModal" class="modal">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h3>Nuevo Mensaje</h3>
+						<button id="closeModal" class="btn-close">&times;</button>
+					</div>
+					<div class="modal-body">
+						<div class="form-group">
+							<label for="receiverUsername">Usuario destinatario:</label>
+							<input type="text" id="receiverUsername" placeholder="Nombre de usuario">
+						</div>
+						<div class="form-group">
+							<label for="newMessageText">Mensaje:</label>
+							<textarea id="newMessageText" placeholder="Escribe tu mensaje..." rows="3"></textarea>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button id="sendNewMessage" class="btn">Enviar Mensaje</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			const USER_SERVICE = 'http://localhost:3003';
+			const MESSAGES_SERVICE = 'http://localhost:3004';
+			let currentUser = null;
+			let currentConversation = null;
+
+			async function checkAuth() {
+				try {
+					const response = await fetch(`${USER_SERVICE}/profile`, {
+						credentials: 'include'
+					});
+
+					if (!response.ok) {
+						window.location.href = '/login';
+						return false;
+					}
+
+					const data = await response.json();
+					currentUser = data.user;
+					return true;
+				} catch (error) {
+					window.location.href = '/login';
+					return false;
+				}
+			}
+
+			async function loadConversations() {
+				try {
+					const response = await fetch(`${MESSAGES_SERVICE}/users/${currentUser.id}/conversations`);
+					const data = await response.json();
+					
+					const container = document.getElementById('conversations-list');
+					
+					if (data.conversations && data.conversations.length > 0) {
+						container.innerHTML = data.conversations.map(conv => `
+							<div class="conversation-item" onclick="selectConversation(${conv.other_user_id}, '${conv.other_username}')">
+								<div class="conversation-info">
+									<div class="username">${conv.other_username}</div>
+									<div class="last-message-time">${new Date(conv.last_message_time).toLocaleString()}</div>
+								</div>
+								${conv.unread_count > 0 ? `<div class="unread-badge">${conv.unread_count}</div>` : ''}
+							</div>
+						`).join('');
+					} else {
+						container.innerHTML = '<div class="no-conversations">No tienes conversaciones aún</div>';
+					}
+				} catch (error) {
+					console.error('Error loading conversations:', error);
+				}
+			}
+
+			async function selectConversation(userId, username) {
+				currentConversation = { userId, username };
+				
+				// Update header
+				document.getElementById('chat-header').innerHTML = `
+					<span>Conversación con ${username}</span>
+				`;
+				
+				// Show input area
+				document.getElementById('message-input-area').style.display = 'block';
+				
+				// Load messages
+				await loadMessages();
+				
+				// Mark as read
+				await markAsRead(userId);
+			}
+
+			async function loadMessages() {
+				if (!currentConversation) return;
+				
+				try {
+					const response = await fetch(`${MESSAGES_SERVICE}/users/${currentUser.id}/messages/${currentConversation.userId}`);
+					const data = await response.json();
+					
+					console.log('=== DEBUG INFO ===');
+					console.log('Current user:', currentUser);
+					console.log('Current conversation:', currentConversation);
+					console.log('Messages received:', data.messages);
+					
+					const container = document.getElementById('messages-area');
+					
+					if (data.messages && data.messages.length > 0) {
+						container.innerHTML = data.messages.map((msg, index) => {
+							// Convertir a números para comparación correcta
+							const currentUserId = parseInt(currentUser.id);
+							const senderUserId = parseInt(msg.sender_id);
+							
+							console.log(`Message ${index}:`, {
+								sender_id: senderUserId,
+								sender_username: msg.sender_username,
+						        receiver_id: msg.receiver_id,
+								receiver_username: msg.receiver_username,
+								current_user_id: currentUserId,
+								is_sent: currentUserId === senderUserId
+							});
+							
+							const isSent = currentUserId === senderUserId;
+							return `
+								<div class="message ${isSent ? 'sent' : 'received'}">
+									<div class="message-sender">${isSent ? 'Tú' : msg.sender_username}</div>
+									<div class="message-content">${msg.content}</div>
+									<div class="message-time">${new Date(msg.created_at).toLocaleString()}</div>
+									<div class="debug-info" style="font-size: 0.6rem; opacity: 0.5;">
+										From: ${msg.sender_id} (${msg.sender_username}) To: ${msg.receiver_id} (${msg.receiver_username})
+									</div>
+								</div>
+							`;
+						}).join('');
+						
+						// Scroll to bottom
+						container.scrollTop = container.scrollHeight;
+					} else {
+						container.innerHTML = '<div class="no-messages">No hay mensajes en esta conversación</div>';
+					}
+				} catch (error) {
+					console.error('Error loading messages:', error);
+				}
+			}
+
+			async function markAsRead(senderId) {
+				try {
+					await fetch(`${MESSAGES_SERVICE}/users/${currentUser.id}/messages/${senderId}/read`, {
+						method: 'PUT'
+					});
+					// Reload conversations to update unread count
+					await loadConversations();
+				} catch (error) {
+					console.error('Error marking as read:', error);
+				}
+			}
+
+			async function sendMessage(receiverId, receiverUsername, content) {
+				try {
+					const response = await fetch(`${MESSAGES_SERVICE}/messages`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							sender_id: currentUser.id,
+							sender_username: currentUser.username,
+							receiver_id: receiverId,
+							receiver_username: receiverUsername,
+							content: content
+						})
+					});
+
+					const result = await response.json();
+					
+					if (result.success) {
+						return true;
+					}
+					return false;
+				} catch (error) {
+					console.error('Error sending message:', error);
+					return false;
+				}
+			}
+
+			async function sendMessageByUsername(receiverUsername, content) {
+				try {
+					// First validate that the user exists
+					const userResponse = await fetch(`${USER_SERVICE}/search/${receiverUsername}`);
+					
+					if (!userResponse.ok) {
+						throw new Error('Usuario no encontrado');
+					}
+					
+					const userData = await userResponse.json();
+					const receiver = userData.user;
+
+					// Now send the message using the real user ID
+					const response = await fetch(`${MESSAGES_SERVICE}/messages`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							sender_id: currentUser.id,
+							sender_username: currentUser.username,
+							receiver_id: receiver.id,
+							receiver_username: receiver.username,
+							content: content
+						})
+					});
+
+					const result = await response.json();
+					return result.success;
+				} catch (error) {
+					console.error('Error sending message by username:', error);
+					throw error;
+				}
+			}
+
+			// Event listeners
+			document.getElementById('sendBtn').addEventListener('click', async () => {
+				const messageText = document.getElementById('messageText');
+				const content = messageText.value.trim();
+				
+				if (!content || !currentConversation) return;
+				
+				const success = await sendMessage(currentConversation.userId, currentConversation.username, content);
+				
+				if (success) {
+					messageText.value = '';
+					await loadMessages();
+					await loadConversations();
+				} else {
+					alert('Error al enviar el mensaje');
+				}
+			});
+
+			document.getElementById('newMessageBtn').addEventListener('click', () => {
+				document.getElementById('newMessageModal').style.display = 'flex';
+			});
+
+			document.getElementById('closeModal').addEventListener('click', () => {
+				document.getElementById('newMessageModal').style.display = 'none';
+			});
+
+			document.getElementById('sendNewMessage').addEventListener('click', async () => {
+				const receiverUsername = document.getElementById('receiverUsername').value.trim();
+				const messageContent = document.getElementById('newMessageText').value.trim();
+				
+				if (!receiverUsername || !messageContent) {
+					alert('Por favor completa todos los campos');
+					return;
+				}
+				
+				try {
+					const success = await sendMessageByUsername(receiverUsername, messageContent);
+					
+					if (success) {
+						document.getElementById('newMessageModal').style.display = 'none';
+						document.getElementById('receiverUsername').value = '';
+						document.getElementById('newMessageText').value = '';
+						await loadConversations();
+						alert('Mensaje enviado correctamente');
+					} else {
+						alert('Error al enviar el mensaje');
+					}
+				} catch (error) {
+					if (error.message === 'Usuario no encontrado') {
+						alert('El usuario especificado no existe');
+					} else {
+						alert('Error al enviar el mensaje. Intenta nuevamente.');
+					}
+				}
+			});
+
+			// Enter key to send message
+			document.getElementById('messageText').addEventListener('keydown', (e) => {
+				if (e.key === 'Enter' && !e.shiftKey) {
+					e.preventDefault();
+					document.getElementById('sendBtn').click();
+				}
+			});
+
+			// Initialize
+			window.selectConversation = selectConversation;
+
+			document.addEventListener('DOMContentLoaded', async () => {
+				if (await checkAuth()) {
+					await loadConversations();
+				}
+			});
+		</script>
+	</body>
+</html>

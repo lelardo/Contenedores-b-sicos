@@ -71,7 +71,7 @@ import './registro.css';
 		</div>
 
 		<script>
-			const API_BASE = 'http://localhost:8000';
+			const USER_SERVICE = 'http://localhost:3003';
 
 			function showMessage(message, type = 'error') {
 				const messagesDiv = document.getElementById('messages');
@@ -103,7 +103,7 @@ import './registro.css';
 				submitBtn.textContent = 'Registrando...';
 
 				try {
-					const response = await fetch(`${API_BASE}/api/registro/`, {
+					const response = await fetch(`${USER_SERVICE}/register`, {
 						method: 'POST',
 						body: formData,
 						credentials: 'include'

@@ -21,7 +21,7 @@ import './perfil.css';
 		</div>
 
 		<script>
-			const API_BASE = 'http://localhost:8000';
+			const USER_SERVICE = 'http://localhost:3003';
 			const POSTS_SERVICE = 'http://localhost:3001';
 			let currentUser = null;
 
@@ -34,7 +34,7 @@ import './perfil.css';
 
 			async function loadProfile() {
 				try {
-					const response = await fetch(`${API_BASE}/api/perfil/`, {
+					const response = await fetch(`${USER_SERVICE}/profile`, {
 						credentials: 'include'
 					});
 
@@ -55,7 +55,7 @@ import './perfil.css';
 						<div class="profile-info">
 							<div class="profile-image">
 								${data.user.has_profile_picture 
-									? `<img src="${API_BASE}/profile-picture/${data.user.id}/" alt="Foto de perfil">`
+									? `<img src="${USER_SERVICE}/profile-picture/${data.user.id}" alt="Foto de perfil">`
 									: `<img src="/default-profile.png" alt="Foto de perfil predeterminada">`
 								}
 							</div>
@@ -75,6 +75,7 @@ import './perfil.css';
 
 						<div class="button-container">
 							<a href="/" class="btn">Inicio</a>
+							<a href="/mensajes" class="btn">Mensajes</a>
 							<button onclick="handleLogout()" class="btn logout">Cerrar Sesión</button>
 						</div>
 
@@ -170,7 +171,7 @@ import './perfil.css';
 			// Make logout function globally accessible
 			window.handleLogout = async function() {
 				try {
-					const response = await fetch(`${API_BASE}/api/logout/`, {
+					const response = await fetch(`${USER_SERVICE}/logout`, {
 						method: 'POST',
 						credentials: 'include'
 					});

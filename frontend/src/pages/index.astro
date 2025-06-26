@@ -31,14 +31,14 @@ import './index.css';
 		</div>
 
 		<script>
-			const API_BASE = 'http://localhost:8000';
+			const USER_SERVICE = 'http://localhost:3003';
 			const POSTS_SERVICE = 'http://localhost:3001';
 			const COMMENTS_SERVICE = 'http://localhost:3002';
 			let currentUser = null;
 
 			async function checkAuthStatus() {
 				try {
-					const response = await fetch(`${API_BASE}/api/perfil/`, {
+					const response = await fetch(`${USER_SERVICE}/profile`, {
 						credentials: 'include'
 					});
 
@@ -69,6 +69,7 @@ import './index.css';
 
 				navButtons.innerHTML = `
 					<a href="/perfil" class="btn">Mi Perfil</a>
+					<a href="/mensajes" class="btn">Mensajes</a>
 					<button onclick="handleLogout()" class="btn logout">Cerrar Sesión</button>
 				`;
 			}
@@ -88,7 +89,7 @@ import './index.css';
 			// Make logout function globally accessible
 			window.handleLogout = async function() {
 				try {
-					const response = await fetch(`${API_BASE}/api/logout/`, {
+					const response = await fetch(`${USER_SERVICE}/logout`, {
 						method: 'POST',
 						credentials: 'include'
 					});
@@ -159,7 +160,7 @@ import './index.css';
 									<div class="publicacion-header">
 										<div class="usuario-info">
 											${post.user_id 
-												? `<img src="${API_BASE}/profile-picture/${post.user_id}/" alt="Foto de perfil" class="avatar" onerror="this.src='/default-profile.png'">`
+												? `<img src="${USER_SERVICE}/profile-picture/${post.user_id}" alt="Foto de perfil" class="avatar" onerror="this.src='/default-profile.png'">`
 												: `<img src="/default-profile.png" alt="Foto de perfil predeterminada" class="avatar">`
 											}
 											<span class="username">${post.username}</span>
@@ -201,7 +202,7 @@ import './index.css';
 						container.innerHTML = '<p>No hay publicaciones disponibles.</p>';
 					}
 				} catch (error) {
-					console.error('Error loading publications:', error);
+					console.error('Error loading publicaciones:', error);
 					document.getElementById('publicaciones-container').innerHTML = 
 						'<div class="error">Error al cargar las publicaciones</div>';
 				}
