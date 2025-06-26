@@ -32,6 +32,8 @@ import './index.css';
 
 		<script>
 			const API_BASE = 'http://localhost:8000';
+			const POSTS_SERVICE = 'http://localhost:3001';
+			const COMMENTS_SERVICE = 'http://localhost:3002';
 			let currentUser = null;
 
 			async function checkAuthStatus() {
@@ -100,34 +102,101 @@ import './index.css';
 				}
 			}
 
+			async function loadComments(postId) {
+				try {
+					const response = await fetch(`${COMMENTS_SERVICE}/posts/${postId}/comments`);
+					const data = await response.json();
+					return data.comments || [];
+				} catch (error) {
+					console.error('Error loading comments:', error);
+					return [];
+				}
+			}
+
+			async function addComment(postId, content) {
+				if (!currentUser) {
+					alert('Debes iniciar sesión para comentar');
+					return null;
+				}
+
+				try {
+					const response = await fetch(`${COMMENTS_SERVICE}/posts/${postId}/comments`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							user_id: currentUser.id,
+							username: currentUser.username,
+							content: content
+						})
+					});
+
+					const result = await response.json();
+					if (result.success) {
+						return result.comment;
+					}
+					return null;
+				} catch (error) {
+					console.error('Error adding comment:', error);
+					return null;
+				}
+			}
+
 			async function loadPublicaciones() {
 				try {
-					const response = await fetch(`${API_BASE}/api/publicaciones/`);
+					const response = await fetch(`${POSTS_SERVICE}/posts`);
 					const data = await response.json();
 					
 					const container = document.getElementById('publicaciones-container');
 					
-					if (data.publicaciones && data.publicaciones.length > 0) {
-						container.innerHTML = data.publicaciones.map(pub => `
-							<div class="publicacion">
-								<div class="publicacion-header">
-									<div class="usuario-info">
-										${pub.usuario.has_profile_picture 
-											? `<img src="${API_BASE}/profile-picture/${pub.usuario.id}/" alt="Foto de perfil" class="avatar">`
-											: `<img src="/default-profile.png" alt="Foto de perfil predeterminada" class="avatar">`
-										}
-										<span class="username">${pub.usuario.username}</span>
+					if (data.posts && data.posts.length > 0) {
+						const postsHtml = await Promise.all(data.posts.map(async (post) => {
+							const comments = await loadComments(post.id);
+							
+							return `
+								<div class="publicacion">
+									<div class="publicacion-header">
+										<div class="usuario-info">
+											${post.user_id 
+												? `<img src="${API_BASE}/profile-picture/${post.user_id}/" alt="Foto de perfil" class="avatar" onerror="this.src='/default-profile.png'">`
+												: `<img src="/default-profile.png" alt="Foto de perfil predeterminada" class="avatar">`
+											}
+											<span class="username">${post.username}</span>
+										</div>
+										<span class="fecha">${new Date(post.created_at).toLocaleString()}</span>
 									</div>
-									<span class="fecha">${new Date(pub.fecha_creacion).toLocaleString()}</span>
+									<h3>${post.title}</h3>
+									<div class="contenido">${post.content}</div>
+									${post.has_image 
+										? `<div class="imagen"><img src="${POSTS_SERVICE}/posts/${post.id}/image" alt="Imagen de la publicación"></div>`
+										: ''
+									}
+									
+									<div class="comments-section">
+										<h4>Comentarios (${comments.length})</h4>
+										<div class="comments-list" id="comments-${post.id}">
+											${comments.map(comment => `
+												<div class="comment">
+													<strong>${comment.username}:</strong>
+													<span>${comment.content}</span>
+													<small class="comment-date">${new Date(comment.created_at).toLocaleString()}</small>
+												</div>
+											`).join('')}
+										</div>
+										
+										${currentUser ? `
+											<div class="add-comment">
+												<textarea id="comment-input-${post.id}" placeholder="Escribe un comentario..." rows="2"></textarea>
+												<button onclick="submitComment(${post.id})" class="btn-comment">Comentar</button>
+											</div>
+										` : '<p class="login-prompt">Inicia sesión para comentar</p>'}
+									</div>
 								</div>
-								<h3>${pub.titulo}</h3>
-								<div class="contenido">${pub.contenido}</div>
-								${pub.has_imagen 
-									? `<div class="imagen"><img src="${API_BASE}/publicacion-imagen/${pub.id}/" alt="Imagen de la publicación"></div>`
-									: ''
-								}
-							</div>
-						`).join('');
+							`;
+						}));
+						
+						container.innerHTML = postsHtml.join('');
 					} else {
 						container.innerHTML = '<p>No hay publicaciones disponibles.</p>';
 					}
@@ -135,6 +204,39 @@ import './index.css';
 					console.error('Error loading publications:', error);
 					document.getElementById('publicaciones-container').innerHTML = 
 						'<div class="error">Error al cargar las publicaciones</div>';
+				}
+			}
+
+			// Make submit comment function globally accessible
+			window.submitComment = async function(postId) {
+				const input = document.getElementById(`comment-input-${postId}`);
+				const content = input.value.trim();
+				
+				if (!content) {
+					alert('El comentario no puede estar vacío');
+					return;
+				}
+
+				const comment = await addComment(postId, content);
+				if (comment) {
+					// Add the new comment to the UI
+					const commentsList = document.getElementById(`comments-${postId}`);
+					const newCommentHtml = `
+						<div class="comment">
+							<strong>${comment.username || currentUser.username}:</strong>
+							<span>${comment.content}</span>
+							<small class="comment-date">${new Date(comment.created_at).toLocaleString()}</small>
+						</div>
+					`;
+					commentsList.insertAdjacentHTML('beforeend', newCommentHtml);
+					input.value = '';
+					
+					// Update comment count
+					const section = input.closest('.publicacion').querySelector('.comments-section h4');
+					const currentCount = parseInt(section.textContent.match(/\d+/)[0]);
+					section.textContent = `Comentarios (${currentCount + 1})`;
+				} else {
+					alert('Error al agregar el comentario');
 				}
 			}
 

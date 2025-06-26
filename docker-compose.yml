@@ -39,6 +39,47 @@ services:
         condition: service_healthy
     restart: on-failure
 
+  posts-service:
+    build:
+      context: ./posts-service
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+        echo 'Esperando a que la base de datos esté lista...' &&
+        sleep 15 &&
+        npm start
+      "
+    volumes:
+      - ./posts-service:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+  comments-service:
+    build:
+      context: ./comments-service
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+        echo 'Esperando a que la base de datos esté lista...' &&
+        sleep 20 &&
+        python app.py
+      "
+    volumes:
+      - ./comments-service:/app
+    ports:
+      - "3002:3002"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
   frontend:
     build:
       context: ./frontend
@@ -55,6 +96,8 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+      - posts-service
+      - comments-service
     restart: on-failure
 
 volumes:

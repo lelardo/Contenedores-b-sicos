@@ -22,6 +22,8 @@ import './perfil.css';
 
 		<script>
 			const API_BASE = 'http://localhost:8000';
+			const POSTS_SERVICE = 'http://localhost:3001';
+			let currentUser = null;
 
 			function showMessage(message, type = 'error') {
 				const messagesDiv = document.getElementById('messages');
@@ -42,6 +44,11 @@ import './perfil.css';
 					}
 
 					const data = await response.json();
+					currentUser = data.user;
+					
+					// Load user posts from posts service
+					const postsResponse = await fetch(`${POSTS_SERVICE}/users/${currentUser.id}/posts`);
+					const postsData = await postsResponse.json();
 					
 					const container = document.getElementById('profile-content');
 					container.innerHTML = `
@@ -94,14 +101,14 @@ import './perfil.css';
 						<div class="mis-publicaciones">
 							<h3>Mis Publicaciones</h3>
 							<div id="publicaciones-container">
-								${data.publicaciones && data.publicaciones.length > 0 
-									? data.publicaciones.map(pub => `
+								${postsData.posts && postsData.posts.length > 0 
+									? postsData.posts.map(post => `
 										<div class="publicacion">
-											<h4>${pub.titulo}</h4>
-											<p class="fecha">${new Date(pub.fecha_creacion).toLocaleString()}</p>
-											<div class="contenido">${pub.contenido}</div>
-											${pub.has_imagen 
-												? `<div class="imagen"><img src="${API_BASE}/publicacion-imagen/${pub.id}/" alt="Imagen de la publicación"></div>`
+											<h4>${post.title}</h4>
+											<p class="fecha">${new Date(post.created_at).toLocaleString()}</p>
+											<div class="contenido">${post.content}</div>
+											${post.has_image 
+												? `<div class="imagen"><img src="${POSTS_SERVICE}/posts/${post.id}/image" alt="Imagen de la publicación"></div>`
 												: ''
 											}
 										</div>
@@ -126,16 +133,19 @@ import './perfil.css';
 				e.preventDefault();
 				
 				const formData = new FormData(e.target);
+				// Use the correct field names that match the posts service
+				formData.append('user_id', currentUser.id);
+				formData.append('username', currentUser.username);
+				
 				const submitBtn = e.target.querySelector('button[type="submit"]');
 				
 				submitBtn.disabled = true;
 				submitBtn.textContent = 'Publicando...';
 
 				try {
-					const response = await fetch(`${API_BASE}/api/perfil/`, {
+					const response = await fetch(`${POSTS_SERVICE}/posts`, {
 						method: 'POST',
-						body: formData,
-						credentials: 'include'
+						body: formData
 					});
 
 					const result = await response.json();
