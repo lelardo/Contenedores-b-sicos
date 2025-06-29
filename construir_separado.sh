@@ -53,8 +53,6 @@ else
     echo "❌ Error construyendo frontend"
 fi
 
-echo "Limpiando recursos..."
-docker system prune -f
 
 echo "Esperando 15 segundos antes de construir servicios Python..."
 sleep 15
@@ -84,4 +82,5 @@ echo "Ahora puedes crear los secrets y desplegar:"
 echo "echo 'redsocial' | docker secret create postgres_db -"
 echo "echo 'admina' | docker secret create postgres_user -"
 echo "echo 'tupassword123' | docker secret create postgres_password -"
+echo "echo 'db' | docker secret create postgres_host -"
 echo "docker stack deploy -c docker-stack.yml redsocial"

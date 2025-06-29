@@ -17,8 +17,11 @@ const pool = new Pool({
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:4321', 'http://127.0.0.1:4321'],
-  credentials: true
+  origin: [
+    'http://localhost:4321', 
+    'http://127.0.0.1:4321',
+    'http://192.168.99.100:4321' // <-- AÑADIR ESTA LÍNEA
+  ],credentials: true
 }));
 app.use(express.json());
 

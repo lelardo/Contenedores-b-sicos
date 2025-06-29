@@ -24,3 +24,4 @@ echo ¡Imágenes construidas exitosamente!
 echo Ahora puedes desplegar con: docker stack deploy -c docker-stack.yml redsocial
 
 pause
+
