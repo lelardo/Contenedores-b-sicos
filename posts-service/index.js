@@ -18,7 +18,7 @@ const pool = new Pool({
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:4321', 'http://127.0.0.1:4321'],
+  origin: true, // Permitir cualquier origen
   credentials: true
 }));
 app.use(express.json());

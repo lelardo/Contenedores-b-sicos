@@ -21,8 +21,16 @@ import './perfil.css';
 		</div>
 
 		<script>
-			const USER_SERVICE = 'http://localhost:3003';
-			const POSTS_SERVICE = 'http://localhost:3001';
+			// Configuración de servicios - detectar si estamos en producción
+			const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+			const VM_IP = window.location.hostname; // Usar la IP de la VM desde el navegador
+			
+			const USER_SERVICE = isProduction ? 
+				`http://${VM_IP}:3003` : 
+				'http://localhost:3003';
+			const POSTS_SERVICE = isProduction ? 
+				`http://${VM_IP}:3001` : 
+				'http://localhost:3001';
 			let currentUser = null;
 
 			function showMessage(message, type = 'error') {

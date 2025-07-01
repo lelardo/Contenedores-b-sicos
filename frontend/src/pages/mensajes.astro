@@ -72,8 +72,16 @@ import './mensajes.css';
 		</div>
 
 		<script>
-			const USER_SERVICE = 'http://localhost:3003';
-			const MESSAGES_SERVICE = 'http://localhost:3004';
+			// Configuración de servicios - detectar si estamos en producción
+			const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+			const VM_IP = window.location.hostname; // Usar la IP de la VM desde el navegador
+			
+			const USER_SERVICE = isProduction ? 
+				`http://${VM_IP}:3003` : 
+				'http://localhost:3003';
+			const MESSAGES_SERVICE = isProduction ? 
+				`http://${VM_IP}:3004` : 
+				'http://localhost:3004';
 			let currentUser = null;
 			let currentConversation = null;
 
