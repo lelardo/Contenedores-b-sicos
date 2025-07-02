@@ -10,7 +10,9 @@ from datetime import datetime
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:4321', 'http://127.0.0.1:4321'], supports_credentials=True)
+
+# Simplified CORS configuration - avoid duplicate headers
+CORS(app, origins="*", methods=['GET', 'POST', 'OPTIONS'], allow_headers=['Content-Type', 'Authorization'])
 
 # Database configuration
 DB_CONFIG = {
@@ -81,11 +83,17 @@ def get_comments(post_id):
 
 @app.route('/posts/<int:post_id>/comments', methods=['POST'])
 def create_comment(post_id):
+    print(f'POST request received for post {post_id}')
+    print(f'Request headers: {dict(request.headers)}')
     try:
         data = request.get_json()
+        print(f'Request data: {data}')
         
         if not data or not all(k in data for k in ['user_id', 'username', 'content']):
-            return jsonify({'error': 'Missing required fields'}), 400
+            print('Missing required fields')
+            return jsonify({'error': 'Missing required fields', 'received': data}), 400
+        
+        print(f'Creating comment: post_id={post_id}, user_id={data["user_id"]}, username={data["username"]}, content={data["content"]}')
         
         conn = get_db_connection()
         cur = conn.cursor()
@@ -103,12 +111,16 @@ def create_comment(post_id):
         
         result['created_at'] = result['created_at'].isoformat()
         
+        print(f'Comment created successfully: {result}')
+        
         return jsonify({
             'success': True,
             'comment': result
         }), 201
     except Exception as e:
         print(f'Error creating comment: {e}')
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/users/<int:user_id>/comments', methods=['GET'])

@@ -15,7 +15,7 @@ echo.
 REM --- Construcción de servicios Node.js ---
 
 echo --> Construyendo user-service...
-docker build -t localhost/user-service:latest ./user-service
+docker build -t localhost/session-service:latest ./session-service
 IF %ERRORLEVEL% NEQ 0 (
     echo "❌ Error construyendo user-service."
     goto:eof
@@ -67,7 +67,7 @@ echo.
 timeout /t 10 /nobreak > nul
 
 echo --> Construyendo backend (Django)...
-docker build --memory=512m --memory-swap=1g -t localhost/backend:latest ./backend
+docker build --memory=512m --memory-swap=1g -t localhost/loggin-service:latest ./loggin-service
 IF %ERRORLEVEL% NEQ 0 (
     echo "❌ Error construyendo backend."
     goto:eof

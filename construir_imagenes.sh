@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Construyendo imágenes una por una para evitar problemas de memoria..."
+echo "Construyendo imágenes de los microservicios..."
 
 echo "Descargando imagen de PostgreSQL..."
 docker pull postgres:15-alpine
@@ -13,7 +13,7 @@ echo "Esperando 10 segundos..."
 sleep 10
 
 echo "Construyendo user-service..."
-docker build -t localhost/user-service:latest ./user-service
+docker build -t localhost/session-service:latest ./session-service
 if [ $? -eq 0 ]; then
     echo "✅ user-service construido exitosamente"
 else
@@ -69,7 +69,7 @@ echo "Esperando 15 segundos..."
 sleep 15
 
 echo "Construyendo backend con límites de memoria..."
-docker build --memory=512m --memory-swap=1g -t localhost/backend:latest ./backend
+docker build --memory=512m --memory-swap=1g -t localhost/loggin-service:latest ./loggin-service
 if [ $? -eq 0 ]; then
     echo "✅ backend construido exitosamente"
 else
@@ -78,9 +78,11 @@ fi
 
 echo
 echo "Proceso de construcción completado!"
-echo "Ahora puedes crear los secrets y desplegar:"
-echo "echo 'redsocial' | docker secret create postgres_db -"
-echo "echo 'admina' | docker secret create postgres_user -"
-echo "echo 'tupassword123' | docker secret create postgres_password -"
-echo "echo 'db' | docker secret create postgres_host -"
-echo "docker stack deploy -c docker-stack.yml redsocial"
+
+echo "Codificando claves de la base de datos..."
+
+docker secret create postgres_db postgres_db.txt
+docker secret create postgres_user postgres_user.txt
+docker secret create postgres_password postgres_password.txt
+
+echo "Claves de la base de datos codificadas exitosamente!"

@@ -40,8 +40,8 @@ services:
       - postgres_user
       - postgres_password
 
-  backend:
-    image: ${REGISTRY:-localhost}/backend:latest
+  loggin-service:
+    image: ${REGISTRY:-localhost}/loggin-service:latest
     command: >
       sh -c "
         export POSTGRES_DB=$$(cat /run/secrets/postgres_db) &&
@@ -70,8 +70,8 @@ services:
       - postgres_user
       - postgres_password
 
-  user-service:
-    image: ${REGISTRY:-localhost}/user-service:latest
+  session-service:
+    image: ${REGISTRY:-localhost}/session-service:latest
     command: >
       sh -c "
         export POSTGRES_DB=$$(cat /run/secrets/postgres_db) &&

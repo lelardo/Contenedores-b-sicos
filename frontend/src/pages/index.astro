@@ -130,11 +130,10 @@ import './index.css';
 					return null;
 				}
 
-				console.log('=== DEBUG COMMENT ===');
-				console.log('Post ID:', postId);
-				console.log('Content:', content);
-				console.log('Current User:', currentUser);
-				console.log('Comments Service URL:', COMMENTS_SERVICE);
+				console.log('Adding comment - Post ID:', postId);
+				console.log('Comment content:', content);
+				console.log('Current user:', currentUser);
+				console.log('Comments service URL:', COMMENTS_SERVICE);
 
 				try {
 					const requestData = {
@@ -144,8 +143,7 @@ import './index.css';
 					};
 					
 					console.log('Request data:', requestData);
-					console.log('Full URL:', `${COMMENTS_SERVICE}/posts/${postId}/comments`);
-
+					
 					const response = await fetch(`${COMMENTS_SERVICE}/posts/${postId}/comments`, {
 						method: 'POST',
 						headers: {
@@ -158,20 +156,19 @@ import './index.css';
 					console.log('Response headers:', response.headers);
 
 					if (!response.ok) {
-						console.error('Response not OK:', response.status, response.statusText);
+						console.error('Response not ok:', response.status, response.statusText);
 						const errorText = await response.text();
-						console.error('Error response body:', errorText);
+						console.error('Error response:', errorText);
 						return null;
 					}
 
 					const result = await response.json();
-					console.log('Response result:', result);
+					console.log('Response data:', result);
 					
 					if (result.success) {
-						console.log('Comment added successfully!');
 						return result.comment;
 					} else {
-						console.error('Server returned success=false:', result);
+						console.error('Server returned failure:', result);
 						return null;
 					}
 				} catch (error) {
