@@ -30,7 +30,7 @@ services:
         python manage.py runserver 0.0.0.0:8000
       "
     volumes:
-      - ./backend:/app
+      - ./loggin-service:/app
     ports:
       - "8000:8000"
     env_file: .env
@@ -50,7 +50,7 @@ services:
         npm start
       "
     volumes:
-      - ./user-service:/app
+      - ./session-service:/app
       - /app/node_modules
     ports:
       - "3003:3003"
@@ -118,11 +118,11 @@ services:
       - "3004:3004"
     env_file: .env
     environment:
-      - USER_SERVICE_URL=http://user-service:3003
+      - USER_SERVICE_URL=http://session-service:3003
     depends_on:
       db:
         condition: service_healthy
-      user-service:
+      session-service:
         condition: service_started
     restart: on-failure
 
@@ -141,8 +141,8 @@ services:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
-      - backend
-      - user-service
+      - loggin-service
+      - session-service
       - posts-service
       - comments-service
       - messages-service

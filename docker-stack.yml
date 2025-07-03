@@ -4,9 +4,9 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB_FILE: /run/secrets/postgres_db
-      POSTGRES_USER_FILE: /run/secrets/postgres_user
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: proyecto_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
       POSTGRES_SHARED_PRELOAD_LIBRARIES: ""
     volumes:
@@ -14,7 +14,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$(cat /run/secrets/postgres_user) -d $$(cat /run/secrets/postgres_db)"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d proyecto_db"]
       interval: 10s
       timeout: 10s
       retries: 3
@@ -35,18 +35,11 @@ services:
           memory: 128M
     networks:
       - app-network
-    secrets:
-      - postgres_db
-      - postgres_user
-      - postgres_password
 
   loggin-service:
-    image: ${REGISTRY:-localhost}/loggin-service:latest
+    image: lelardo/loggin-service:latest
     command: >
       sh -c "
-        export POSTGRES_DB=$$(cat /run/secrets/postgres_db) &&
-        export POSTGRES_USER=$$(cat /run/secrets/postgres_user) &&
-        export POSTGRES_PASSWORD=$$(cat /run/secrets/postgres_password) &&
         echo 'Esperando a que la base de datos esté lista...' &&
         sleep 10 &&
         python manage.py migrate &&
@@ -57,6 +50,9 @@ services:
     environment:
       - DB_HOST=db
       - POSTGRES_PORT=5432
+      - POSTGRES_DB=proyecto_db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin123
     depends_on:
       - db
     deploy:
@@ -65,18 +61,11 @@ services:
         condition: on-failure
     networks:
       - app-network
-    secrets:
-      - postgres_db
-      - postgres_user
-      - postgres_password
 
   session-service:
-    image: ${REGISTRY:-localhost}/session-service:latest
+    image: lelardo/session-service:latest
     command: >
       sh -c "
-        export POSTGRES_DB=$$(cat /run/secrets/postgres_db) &&
-        export POSTGRES_USER=$$(cat /run/secrets/postgres_user) &&
-        export POSTGRES_PASSWORD=$$(cat /run/secrets/postgres_password) &&
         echo 'Esperando a que la base de datos esté lista...' &&
         sleep 12 &&
         npm start
@@ -86,26 +75,25 @@ services:
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
+      - POSTGRES_DB=proyecto_db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin123
     depends_on:
       - db
     deploy:
-      replicas: 1
+      replicas: 3
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
     networks:
       - app-network
-    secrets:
-      - postgres_db
-      - postgres_user
-      - postgres_password
 
   posts-service:
-    image: ${REGISTRY:-localhost}/posts-service:latest
+    image: lelardo/posts-service:latest
     command: >
       sh -c "
-        export POSTGRES_DB=$$(cat /run/secrets/postgres_db) &&
-        export POSTGRES_USER=$$(cat /run/secrets/postgres_user) &&
-        export POSTGRES_PASSWORD=$$(cat /run/secrets/postgres_password) &&
         echo 'Esperando a que la base de datos esté lista...' &&
         sleep 15 &&
         npm start
@@ -115,26 +103,25 @@ services:
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
+      - POSTGRES_DB=proyecto_db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin123
     depends_on:
       - db
     deploy:
-      replicas: 1
+      replicas: 3
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
     networks:
       - app-network
-    secrets:
-      - postgres_db
-      - postgres_user
-      - postgres_password
 
   comments-service:
-    image: ${REGISTRY:-localhost}/comments-service:latest
+    image: lelardo/comments-service:latest
     command: >
       sh -c "
-        export POSTGRES_DB=$$(cat /run/secrets/postgres_db) &&
-        export POSTGRES_USER=$$(cat /run/secrets/postgres_user) &&
-        export POSTGRES_PASSWORD=$$(cat /run/secrets/postgres_password) &&
         echo 'Esperando a que la base de datos esté lista...' &&
         sleep 20 &&
         python app.py
@@ -144,6 +131,9 @@ services:
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
+      - POSTGRES_DB=proyecto_db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin123
     depends_on:
       - db
     deploy:
@@ -152,18 +142,11 @@ services:
         condition: on-failure
     networks:
       - app-network
-    secrets:
-      - postgres_db
-      - postgres_user
-      - postgres_password
 
   messages-service:
-    image: ${REGISTRY:-localhost}/messages-service:latest
+    image: lelardo/messages-service:latest
     command: >
       sh -c "
-        export POSTGRES_DB=$$(cat /run/secrets/postgres_db) &&
-        export POSTGRES_USER=$$(cat /run/secrets/postgres_user) &&
-        export POSTGRES_PASSWORD=$$(cat /run/secrets/postgres_password) &&
         echo 'Esperando a que la base de datos esté lista...' &&
         sleep 18 &&
         npm start
@@ -173,23 +156,25 @@ services:
     environment:
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
-      - USER_SERVICE_URL=http://user-service:3003
+      - POSTGRES_DB=proyecto_db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin123
+      - USER_SERVICE_URL=http://session-service:3003
     depends_on:
       - db
-      - user-service
+      - session-service
     deploy:
-      replicas: 1
+      replicas: 3
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.role == worker
     networks:
       - app-network
-    secrets:
-      - postgres_db
-      - postgres_user
-      - postgres_password
 
   frontend:
-    image: ${REGISTRY:-localhost}/frontend:latest
+    image: lelardo/frontend:latest
     command: >
       sh -c "
         npm run build &&
@@ -198,8 +183,8 @@ services:
     ports:
       - "4321:4321"
     depends_on:
-      - backend
-      - user-service
+      - loggin-service
+      - session-service
       - posts-service
       - comments-service
       - messages-service
@@ -209,14 +194,6 @@ services:
         condition: on-failure
     networks:
       - app-network
-
-secrets:
-  postgres_db:
-    external: true
-  postgres_user:
-    external: true
-  postgres_password:
-    external: true
 
 volumes:
   postgres_data:
