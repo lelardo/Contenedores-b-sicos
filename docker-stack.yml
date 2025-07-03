@@ -20,9 +20,6 @@ services:
       retries: 3
     deploy:
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
       restart_policy:
         condition: on-failure
         delay: 10s
@@ -40,8 +37,12 @@ services:
     image: lelardo/loggin-service:latest
     command: >
       sh -c "
-        echo 'Esperando a que la base de datos esté lista...' &&
-        sleep 10 &&
+        /wait-for-it.sh db:5432 --timeout=60 --strict -- 
+        echo 'Esperando base de datos...' &&
+        until nc -z db 5432; do
+          echo 'DB no disponible, reintentando...'
+          sleep 2
+        done &&
         python manage.py migrate &&
         python manage.py runserver 0.0.0.0:8000 --noreload
       "
@@ -53,8 +54,6 @@ services:
       - POSTGRES_DB=proyecto_db
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=admin123
-    depends_on:
-      - db
     deploy:
       replicas: 1
       restart_policy:
